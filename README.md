@@ -1,3 +1,3 @@
 # KQLThreatHunting
 
-This is where I share all my KQL threat hunting iniatives that you can then use to help protect your organization.
+This is where I share all my KQL threat-hunting initiatives, which you can use to help protect your organization.
