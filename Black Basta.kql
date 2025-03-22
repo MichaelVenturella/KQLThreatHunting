@@ -1,0 +1,39 @@
+let TimeWindow = 7d; // Adjust time window as needed
+let SuspiciousDomains = dynamic(["qr-s1.com", ".onmicrosoft.com", "sciencesformation.com"]); // Known phishing domains
+let SuspiciousTools = dynamic(["mimikatz", "rclone", "anydesk", "quickassist", "cobaltstrike", "systembc"]); // Tools used by Black Basta
+let SuspiciousExtensions = dynamic([".basta", ".agnkdbd5y", ".taovhsr3u", ".tcw9lnz6q"]); // Known file extensions
+// Combine multiple data sources for comprehensive detection
+union
+// Check for suspicious process executions (e.g., tools like Mimikatz, Rclone)
+SecurityEvent
+| where TimeGenerated > ago(TimeWindow)
+| where EventID == 4688 // Process creation events
+| where ProcessName has_any (SuspiciousTools) or CommandLine has_any (SuspiciousTools)
+| project TimeGenerated, Computer, Account, ProcessName, CommandLine, Activity = "Suspicious Tool Execution",
+// Check for file creation with Black Basta extensions
+DeviceFileEvents
+| where TimeGenerated > ago(TimeWindow)
+| where FileName has_any (SuspiciousExtensions)
+| project TimeGenerated, DeviceName, FileName, FolderPath, Activity = "Suspicious File Creation",
+// Check for phishing-related network activity
+DeviceNetworkEvents
+| where TimeGenerated > ago(TimeWindow)
+| where RemoteUrl has_any (SuspiciousDomains) or InitiatingProcessFileName has_any (SuspiciousTools)
+| project TimeGenerated, DeviceName, RemoteUrl, InitiatingProcessFileName, Activity = "Suspicious Network Activity",
+// Check Microsoft Teams messages for QR codes or suspicious links (social engineering)
+OfficeActivity
+| where TimeGenerated > ago(TimeWindow)
+| where RecordType == "MicrosoftTeams"
+| where Operation == "MessageSent"
+| where Message has_any (SuspiciousDomains) or Message contains "qr"
+| project TimeGenerated, UserId, Message, ChatType, Activity = "Suspicious Teams Message",
+// Check for attempts to disable security tools
+DeviceProcessEvents
+| where TimeGenerated > ago(TimeWindow)
+| where (ProcessCommandLine has "vssadmin" and ProcessCommandLine has "delete shadows") // Volume Shadow Copy deletion
+   or (ProcessCommandLine has "powershell" and ProcessCommandLine has "disable") // Disabling AV via PowerShell
+| project TimeGenerated, DeviceName, ProcessFileName, ProcessCommandLine, Activity = "Security Tool Tampering"
+// Summarize and prioritize results
+| summarize EventCount = count(), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated) by Computer, DeviceName, Activity, ProcessName, CommandLine, FileName, RemoteUrl, UserId, Message
+| where EventCount > 0
+| order by LastSeen desc
