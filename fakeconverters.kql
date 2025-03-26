@@ -1,0 +1,7 @@
+//Reference: https://www.bleepingcomputer.com/news/security/fbi-warnings-are-true-fake-file-converters-do-push-malware/
+
+DeviceNetworkEvents
+| where RemoteUrl == "docu-flex[.]com"
+
+DeviceNetworkEvents
+| where RemoteUrl == "pdfixers[.]com"
