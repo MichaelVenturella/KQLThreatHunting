@@ -1,0 +1,7 @@
+//Reference: https://fieldeffect.com/blog/field-effect-discovers-m365-adversary-in-the-middle-campaign#if9v7p
+
+let suspiciousUserAgents = dynamic(["axios/1.7.2", "axios/1.7.1", "axios/1.6.8", "axios/1.6.7", "agentaxios/1.7.2"]);
+DeviceNetworkEvents
+| where UserAgent in (suspiciousUserAgents)
+| project Timestamp, DeviceName, RemoteIP, RemoteUrl, UserAgent, ActionType
+| extend Details = "Suspicious User Agent detected"
